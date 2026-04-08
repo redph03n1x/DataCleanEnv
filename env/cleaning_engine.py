@@ -114,7 +114,7 @@ class CleaningEngine:
             return df, self._noop(f"No nulls in '{col}'.")
         mean_val = df[col].mean()
         new_df   = df.copy()
-        new_df[col].fillna(mean_val, inplace=True)
+        new_df[col] = new_df[col].fillna(mean_val)
         return new_df, LastActionResult(
             action_taken=f"fill_null_mean({col})",
             column_affected=col,
@@ -132,7 +132,7 @@ class CleaningEngine:
             return df, self._noop(f"No nulls in '{col}'.")
         median_val = df[col].median()
         new_df     = df.copy()
-        new_df[col].fillna(median_val, inplace=True)
+        new_df[col] = new_df[col].fillna(median_val)
         return new_df, LastActionResult(
             action_taken=f"fill_null_median({col})",
             column_affected=col,
@@ -243,7 +243,7 @@ class CleaningEngine:
             return df, self._bad(f"Column '{col}' not found.")
         new_df  = df.copy()
         before  = new_df[col].copy()
-        parsed  = pd.to_datetime(new_df[col], infer_datetime_format=True, errors="coerce")
+        parsed = pd.to_datetime(new_df[col], errors="coerce")
         # Format as ISO YYYY-MM-DD (date columns) or YYYY-MM-DDTHH:MM:SSZ (timestamps)
         if parsed.dt.time.astype(str).eq("00:00:00").all():
             new_df[col] = parsed.dt.strftime("%Y-%m-%d")
