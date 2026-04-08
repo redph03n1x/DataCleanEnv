@@ -1,0 +1,29 @@
+# ── Web Framework ──────────────────────────────────────────────
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+
+# ── Data & Science ─────────────────────────────────────────────
+pandas==2.2.3
+numpy==1.26.4
+scipy==1.14.1
+scikit-learn==1.5.2
+rapidfuzz==3.10.1
+
+# ── Data Generation ────────────────────────────────────────────
+faker==33.1.0
+
+# ── Validation & Models ────────────────────────────────────────
+pydantic==2.10.3
+pydantic-settings==2.7.0
+
+# ── OpenEnv ────────────────────────────────────────────────────
+openenv-core==0.1.0
+
+# ── LLM Client (inference.py) ──────────────────────────────────
+openai==1.59.9
+
+# ── Utilities ──────────────────────────────────────────────────
+python-dotenv==1.0.1
+httpx==0.28.1
+tenacity==9.0.0
