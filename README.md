@@ -538,9 +538,11 @@ python inference.py
 
 | Task | Difficulty | Baseline Score |
 |---|---|---|
-| monday_morning | Easy | 0.88 |
-| warehouse_merge | Medium | 0.71 |
-| data_lake_crisis | Hard | 0.58 |
+| monday_morning | Easy | 0.667 |
+| warehouse_merge | Medium | 0.866 |
+| data_lake_crisis | Hard | 0.904 |
+| **Average** | | **0.812** |
+
 
 ---
 

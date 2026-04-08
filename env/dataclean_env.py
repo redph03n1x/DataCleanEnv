@@ -322,7 +322,7 @@ class DataCleanEnv:
         # outlier score
         outlier_score = 0.0
         value_range   = None
-        if pd.api.types.is_numeric_dtype(series):
+        if pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series):
             clean = series.dropna()
             if len(clean) >= 4:
                 q1, q3 = clean.quantile([0.25, 0.75])

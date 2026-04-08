@@ -108,35 +108,38 @@ You are a data cleaning agent operating on a dirty dataset.
 Each turn you receive the current dataset profile (statistics only — no raw values)
 and must choose exactly one cleaning action.
 
-Available actions:
-  fill_null_mean(column)       — fill nulls with mean (numeric columns)
-  fill_null_median(column)     — fill nulls with median (use when outliers present)
-  fill_null_mode(column)       — fill nulls with most frequent value (categorical)
-  fill_null_forward(column)    — forward fill (time-series columns)
-  drop_rows_with_null(column)  — drop rows where column is null (use sparingly)
-  cast_to_integer(column)      — convert to integer type
-  cast_to_float(column)        — convert to float type
-  cast_to_string(column)       — convert to string type
-  parse_dates(column)          — standardize all date formats to ISO
-  normalize_categories(column) — lowercase + strip whitespace
-  remove_exact_duplicates()    — remove identical rows (no column needed)
-  remove_near_duplicates(column) — fuzzy deduplication on key column
-  clip_outliers_iqr(column)    — clip values to 1.5xIQR range
-  remove_outlier_rows(column)  — drop rows with extreme outlier values
-  merge_table(table_name)      — join a secondary table (Task 2+)
-  apply_business_rule(rule_id) — apply a named business rule (Task 2+)
-  submit()                     — end episode, receive final score
+CRITICAL RULES:
+- NEVER repeat an action you already took on the same column
+- Call submit() when all required columns are clean OR you have 3 steps left
+- Do NOT clean columns not mentioned in the task brief
 
-Strategy:
-1. Read the task brief carefully. Only clean what the purpose requires.
-2. Remove duplicates FIRST before any other operation.
-3. Fix formats (dates, categories) BEFORE imputing nulls.
-4. Handle outliers BEFORE imputing — do not impute around bad values.
-5. Impute nulls that remain after outlier handling.
-6. Merge tables when available_tables is non-empty.
-7. Apply business rules when available_rules is non-empty.
-8. Submit when all required columns are clean or steps are running low.
-9. Do NOT clean columns not mentioned in the task brief.
+Available actions:
+  fill_null_mean(column)         — fill nulls with mean (numeric columns)
+  fill_null_median(column)       — fill nulls with median (use when outliers present)
+  fill_null_mode(column)         — fill nulls with most frequent value (categorical)
+  fill_null_forward(column)      — forward fill (time-series columns)
+  drop_rows_with_null(column)    — drop rows where column is null (use sparingly)
+  cast_to_integer(column)        — convert to integer type
+  cast_to_float(column)          — convert to float type
+  cast_to_string(column)         — convert to string type
+  parse_dates(column)            — standardize all date formats to ISO
+  normalize_categories(column)   — lowercase + strip whitespace
+  remove_exact_duplicates()      — remove identical rows (no column needed)
+  remove_near_duplicates(column) — fuzzy deduplication on key column
+  clip_outliers_iqr(column)      — clip values to 1.5xIQR range
+  remove_outlier_rows(column)    — drop rows with extreme outlier values
+  merge_table(table_name)        — join a secondary table (Task 2+)
+  apply_business_rule(rule_id)   — apply a named business rule (Task 2+)
+  submit()                       — end episode, receive final score
+
+Strategy (follow this order strictly):
+1. Remove duplicates FIRST
+2. Fix formats (parse_dates, normalize_categories)
+3. Clip outliers BEFORE imputing
+4. Impute nulls (fill_null_median for numeric, fill_null_mode for categorical)
+5. Merge tables if available_tables is non-empty
+6. Apply business rules if available_rules is non-empty
+7. Call submit() when done or 3 steps remaining
 
 Respond with ONLY a JSON object, no other text:
 {"action_type": "...", "column": "..." or null, "table_name": "..." or null, "rule_id": "..." or null}
@@ -147,8 +150,7 @@ Respond with ONLY a JSON object, no other text:
 # AGENT DECISION
 # ─────────────────────────────────────────────────────────────────
 
-def build_user_prompt(obs: dict, step: int, last_reward: float) -> str:
-    """Convert observation dict into a readable prompt for the LLM."""
+def build_user_prompt(obs: dict, step: int, last_reward: float, history: list) -> str:
     cols = obs.get("columns", [])
     col_lines = []
     for c in cols:
@@ -160,14 +162,17 @@ def build_user_prompt(obs: dict, step: int, last_reward: float) -> str:
         )
 
     last_action = obs.get("last_action_result")
-    last_msg    = last_action.get("message", "") if last_action else "None"
+    last_msg = last_action.get("message", "") if last_action else "None"
+
+    # Build history block so agent knows what it already did
+    history_block = "\n".join(f"  Step {i+1}: {h}" for i, h in enumerate(history)) if history else "  None yet"
+
+    steps_remaining = obs.get("steps_remaining", 0)
+    submit_warning = "\n⚠️  CALL submit() NOW - only 3 steps left!" if steps_remaining <= 3 else ""
 
     return textwrap.dedent(f"""
-    STEP {step} | Reward last step: {last_reward:.2f}
-    Steps remaining: {obs.get('steps_remaining', '?')}
-    Rows: {obs.get('total_rows')} | Duplicates: {obs.get('duplicate_row_count')}
-    Available tables: {obs.get('available_tables', [])}
-    Available rules:  {obs.get('available_rules', [])}
+    STEP {step} | Steps remaining: {steps_remaining}{submit_warning}
+    Last reward: {last_reward:.2f}
 
     Task brief:
     {obs.get('task_brief', '')}
@@ -175,15 +180,17 @@ def build_user_prompt(obs: dict, step: int, last_reward: float) -> str:
     Column profiles:
     {chr(10).join(col_lines)}
 
+    Actions already taken (DO NOT REPEAT THESE):
+    {history_block}
+
     Last action result: {last_msg}
 
     Choose your next action (JSON only):
     """).strip()
 
 
-def decide_action(client: OpenAI, obs: dict, step: int, last_reward: float) -> dict:
-    """Call the LLM and parse its action JSON."""
-    user_prompt = build_user_prompt(obs, step, last_reward)
+def decide_action(client: OpenAI, obs: dict, step: int, last_reward: float, history: list) -> dict:
+    user_prompt = build_user_prompt(obs, step, last_reward, history)
     try:
         completion = client.chat.completions.create(
             model=MODEL_NAME,
@@ -191,22 +198,20 @@ def decide_action(client: OpenAI, obs: dict, step: int, last_reward: float) -> d
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user",   "content": user_prompt},
             ],
-            temperature=TEMPERATURE,
+            temperature=0.1,        # lower = less random
             max_tokens=100,
         )
         raw = (completion.choices[0].message.content or "").strip()
-        # strip markdown fences if model added them
         raw = raw.replace("```json", "").replace("```", "").strip()
         return json.loads(raw)
-    except (json.JSONDecodeError, Exception) as exc:
-        print(f"[DEBUG] LLM parse error: {exc} — defaulting to submit()", flush=True)
+    except Exception as exc:
+        print(f"[DEBUG] LLM parse error: {exc}", flush=True)
         return {"action_type": "submit", "column": None}
 
 
 # ─────────────────────────────────────────────────────────────────
 # RUN ONE EPISODE
 # ─────────────────────────────────────────────────────────────────
-
 def run_episode(client: OpenAI, task: str, seed: int) -> float:
     """Run a complete episode. Returns final score in [0, 1]."""
     rewards: List[float] = []
@@ -214,6 +219,7 @@ def run_episode(client: OpenAI, task: str, seed: int) -> float:
     score       = 0.0
     success     = False
     last_reward = 0.0
+    action_history_log: List[str] = []          # ← ADDED: track history
 
     log_start(task=task, env=BENCHMARK, model=MODEL_NAME)
 
@@ -225,7 +231,9 @@ def run_episode(client: OpenAI, task: str, seed: int) -> float:
             if obs.get("done", False):
                 break
 
-            action_dict = decide_action(client, obs, step, last_reward)
+            action_dict = decide_action(                # ← CHANGED: pass history
+                client, obs, step, last_reward, action_history_log
+            )
             action_type = action_dict.get("action_type", "submit")
             column      = action_dict.get("column")
             table_name  = action_dict.get("table_name")
@@ -244,6 +252,8 @@ def run_episode(client: OpenAI, task: str, seed: int) -> float:
                 action_str = f"apply_business_rule({rule_id})"
             else:
                 action_str = action_type
+
+            action_history_log.append(action_str)       # ← ADDED: record action
 
             try:
                 step_resp   = env_step(action_type, column, table_name, rule_id)
@@ -285,8 +295,6 @@ def run_episode(client: OpenAI, task: str, seed: int) -> float:
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
     return score
-
-
 # ─────────────────────────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────────────────────────

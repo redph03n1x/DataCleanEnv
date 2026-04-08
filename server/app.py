@@ -20,7 +20,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from env.dataclean_env import DataCleanEnv, TASK_REGISTRY
 from env.models import (
@@ -82,6 +82,12 @@ async def log_requests(request: Request, call_next):
 # ─────────────────────────────────────────────────────────────────
 # ENDPOINTS
 # ─────────────────────────────────────────────────────────────────
+
+
+@app.get("/", tags=["meta"])
+async def root():
+    """Redirect root to interactive API docs."""
+    return RedirectResponse(url="/docs")
 
 @app.get("/health", response_model=HealthResponse, tags=["meta"])
 async def health():
