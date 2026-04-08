@@ -194,3 +194,12 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": str(exc), "path": str(request.url.path)},
     )
+
+
+
+def main():
+    import uvicorn
+    uvicorn.run("server.app:app", host="0.0.0.0", port=7860, workers=1)
+
+if __name__ == "__main__":
+    main()

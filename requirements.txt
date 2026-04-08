@@ -18,10 +18,10 @@ pydantic==2.10.3
 pydantic-settings==2.7.0
 
 # ── OpenEnv ────────────────────────────────────────────────────
-openenv-core==0.1.0
+openenv-core>=0.2.0
 
 # ── LLM Client (inference.py) ──────────────────────────────────
-openai==1.59.9
+openai>=2.7.2
 
 # ── Utilities ──────────────────────────────────────────────────
 python-dotenv==1.0.1

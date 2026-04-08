@@ -1,0 +1,37 @@
+[project]
+name = "dataclean-env"
+version = "1.0.0"
+description = "OpenEnv data cleaning RL environment"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.32.1",
+    "pandas==2.2.3",
+    "numpy==1.26.4",
+    "scipy==1.14.1",
+    "scikit-learn==1.5.2",
+    "rapidfuzz==3.10.1",
+    "faker==33.1.0",
+    "pydantic==2.10.3",
+    "pydantic-settings==2.7.0",
+    "openenv-core>=0.2.0",
+    "openai>=2.7.2",
+    "python-dotenv==1.0.1",
+    "httpx==0.28.1",
+    "tenacity==9.0.0",
+    "python-multipart==0.0.20",
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.openenv]
+name = "dataclean-env"
+version = "1.0.0"
+reset_endpoint = "/reset"
+step_endpoint = "/step"
+state_endpoint = "/state"
