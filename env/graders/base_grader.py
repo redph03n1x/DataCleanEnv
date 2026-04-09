@@ -49,20 +49,20 @@ class BaseGrader(ABC):
         """
         common_cols = [c for c in truth_df.columns if c in agent_df.columns]
         if not common_cols:
-            return 0.0
+            return 0.001
         diffs = []
         for col in common_cols:
             truth_rate = truth_df[col].isna().mean()
             agent_rate = agent_df[col].isna().mean()
             diffs.append(abs(truth_rate - agent_rate))
-        return float(np.clip(1.0 - np.mean(diffs), 0.0, 1.0))
+        return float(np.clip(1.0 - np.mean(diffs), 0.001, 0.999))
 
     @staticmethod
     def type_accuracy(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float:
         """Fraction of columns where dtype family matches ground truth."""
         common_cols = [c for c in truth_df.columns if c in agent_df.columns]
         if not common_cols:
-            return 0.0
+            return 0.001
         matches = 0
         for col in common_cols:
             t_type = _dtype_family(truth_df[col])
@@ -80,11 +80,11 @@ class BaseGrader(ABC):
         truth_dupes = truth_df.duplicated().sum()
         agent_dupes = agent_df.duplicated().sum()
         if truth_dupes == 0 and agent_dupes == 0:
-            return 1.0
+            return 0.999
         if agent_dupes == 0 and truth_dupes > 0:
-            return 1.0  # agent did better than truth (unusual but ok)
+            return 0.999  # agent did better than truth (unusual but ok)
         max_dupes = max(truth_dupes, agent_dupes, 1)
-        return float(np.clip(1.0 - (agent_dupes / max_dupes), 0.0, 1.0))
+        return float(np.clip(1.0 - (agent_dupes / max_dupes), 0.001, 0.999))
 
     @staticmethod
     def outlier_compliance(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float:
@@ -99,13 +99,13 @@ class BaseGrader(ABC):
             and pd.api.types.is_numeric_dtype(agent_df[c])
         ]
         if not num_cols:
-            return 1.0
+            return 0.999
         diffs = []
         for col in num_cols:
             t_out = _iqr_outlier_rate(truth_df[col])
             a_out = _iqr_outlier_rate(agent_df[col])
             diffs.append(abs(t_out - a_out))
-        return float(np.clip(1.0 - np.mean(diffs) * 5, 0.0, 1.0))
+        return float(np.clip(1.0 - np.mean(diffs) * 5, 0.001, 0.999))
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -160,8 +160,8 @@ class Task1Grader(BaseGrader):
             type_accuracy=ta,
             duplicate_elimination=de,
             outlier_compliance=oc_blended,
-            business_rule_score=1.0,
-            total_score=round(float(np.clip(total, 0.0, 1.0)), 4),
+            business_rule_score=0.999,
+            total_score=round(float(np.clip(total, 0.001, 0.999)), 4),
             task_name=TaskName.MONDAY_MORNING,
             steps_taken=steps_taken,
             seed=seed,
@@ -219,10 +219,10 @@ class Task2Grader(BaseGrader):
         return GraderScore(
             null_compliance=nc,
             type_accuracy=ta,
-            duplicate_elimination=1.0,
-            outlier_compliance=1.0,
+            duplicate_elimination=0.999,
+            outlier_compliance=0.999,
             business_rule_score=brs,
-            total_score=round(float(np.clip(total, 0.0, 1.0)), 4),
+            total_score=round(float(np.clip(total, 0.001, 0.999)), 4),
             task_name=TaskName.WAREHOUSE_MERGE,
             steps_taken=steps_taken,
             seed=seed,
@@ -283,7 +283,7 @@ class Task3Grader(BaseGrader):
             duplicate_elimination=de,
             outlier_compliance=oc,
             business_rule_score=brs,
-            total_score=round(float(np.clip(total, 0.0, 1.0)), 4),
+            total_score=round(float(np.clip(total, 0.001, 0.999)), 4),
             task_name=TaskName.DATA_LAKE_CRISIS,
             steps_taken=steps_taken,
             seed=seed,
@@ -327,15 +327,15 @@ def _dtype_family(series: pd.Series) -> str:
 def _iqr_outlier_rate(series: pd.Series) -> float:
     s = series.dropna()
     if len(s) < 4:
-        return 0.0
+        return 0.001
     try:
         q1, q3 = s.quantile([0.25, 0.75])
         iqr = q3 - q1
         if iqr == 0:
-            return 0.0
+            return 0.001
         return float(((s < q1 - 1.5 * iqr) | (s > q3 + 1.5 * iqr)).mean())
     except Exception:
-        return 0.0
+        return 0.001
 
 
 def _format_bonus(
@@ -352,22 +352,22 @@ def _format_bonus(
         if "date" in col.lower():
             import re
             iso = agent_df[col].dropna().astype(str).str.match(r"^\d{4}-\d{2}-\d{2}$")
-            scores.append(float(iso.mean()) if len(iso) else 1.0)
+            scores.append(float(iso.mean()) if len(iso) else 0.999)
         # email: check lowercase fraction
         elif "email" in col.lower():
             lc = agent_df[col].dropna().astype(str)
             scores.append(float((lc == lc.str.strip().str.lower()).mean()))
-    return float(np.mean(scores)) if scores else 1.0
+    return float(np.mean(scores)) if scores else 0.999
 
 
 def _salary_rule_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float:
     """Fraction of salary values that are in dollar range (>= 1000)."""
     col = "annual_salary"
     if col not in agent_df.columns:
-        return 0.0
+        return 0.001
     valid = agent_df[col].dropna()
     if len(valid) == 0:
-        return 0.0
+        return 0.001
     in_range = (valid >= 1000).mean()
     return float(in_range)
 
@@ -376,10 +376,10 @@ def _country_code_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float
     """Fraction of country codes that are ISO-2 (2 characters)."""
     col = "country_code"
     if col not in agent_df.columns:
-        return 0.0
+        return 0.001
     valid = agent_df[col].dropna().astype(str)
     if len(valid) == 0:
-        return 0.0
+        return 0.001
     iso2 = (valid.str.len() == 2).mean()
     return float(iso2)
 
@@ -389,10 +389,10 @@ def _birth_year_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float:
     import datetime
     col = "birth_year"
     if col not in agent_df.columns:
-        return 0.0
+        return 0.001
     valid = agent_df[col].dropna()
     if len(valid) == 0:
-        return 0.0
+        return 0.001
     current_year = datetime.datetime.now().year
     in_range = ((valid >= 1904) & (valid <= current_year)).mean()
     return float(in_range)
@@ -405,19 +405,19 @@ def _referential_integrity_score(agent_df: pd.DataFrame) -> float:
     """
     col = "customer_id"
     if col not in agent_df.columns:
-        return 1.0
+        return 0.999
     null_rate = float(agent_df[col].isna().mean())
-    return float(np.clip(1.0 - null_rate * 5, 0.0, 1.0))
+    return float(np.clip(1.0 - null_rate * 5, 0.001, 0.999))
 
 
 def _price_negative_score(agent_df: pd.DataFrame) -> float:
     """Fraction of price values that are non-negative."""
     col = "price"
     if col not in agent_df.columns:
-        return 1.0
+        return 0.999
     valid = agent_df[col].dropna()
     if len(valid) == 0:
-        return 1.0
+        return 0.999
     return float((valid >= 0).mean())
 
 
@@ -426,10 +426,10 @@ def _category_canonical_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) ->
     from env.dataset_generator import CANONICAL_CATEGORIES
     col = "product_category"
     if col not in agent_df.columns:
-        return 0.0
+        return 0.001
     valid = agent_df[col].dropna().astype(str)
     if len(valid) == 0:
-        return 0.0
+        return 0.001
     canonical_set = set(CANONICAL_CATEGORIES)
     return float(valid.isin(canonical_set).mean())
 
@@ -438,10 +438,10 @@ def _timestamp_format_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> f
     """Fraction of timestamps that are UTC ISO 8601 format."""
     col = "created_at"
     if col not in agent_df.columns:
-        return 1.0
+        return 0.999
     valid = agent_df[col].dropna().astype(str)
     if len(valid) == 0:
-        return 1.0
+        return 0.999
     import re
     iso_utc = valid.str.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
     return float(iso_utc.mean())

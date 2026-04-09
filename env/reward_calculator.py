@@ -141,7 +141,7 @@ class RewardCalculator:
         """
         series = df[col].dropna().astype(str)
         if series.empty:
-            return 1.0
+            total_score=round(float(np.clip(total, 0.0001, 0.9999)), 5),
 
         # Date column heuristic
         if any(kw in col.lower() for kw in ["date", "at", "time", "year"]):

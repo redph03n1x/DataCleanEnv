@@ -338,7 +338,7 @@ class DataCleanEnv:
                 )
 
         # format consistency
-        format_consistency = 1.0
+        format_consistency = 0.999
         if dtype in (DType.STRING, DType.MIXED, DType.DATE):
             non_null = series.dropna().astype(str)
             if len(non_null) > 0:
