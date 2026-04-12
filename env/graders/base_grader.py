@@ -69,7 +69,7 @@ class BaseGrader(ABC):
             a_type = _dtype_family(agent_df[col])
             if t_type == a_type:
                 matches += 1
-        return float(matches) / len(common_cols)
+        return float(np.clip(matches / len(common_cols), 0.001, 0.999))
 
     @staticmethod
     def duplicate_elimination(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float:
@@ -369,7 +369,7 @@ def _salary_rule_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float:
     if len(valid) == 0:
         return 0.001
     in_range = (valid >= 1000).mean()
-    return float(in_range)
+    return float(np.clip(in_range, 0.001, 0.999))
 
 
 def _country_code_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float:
@@ -381,7 +381,7 @@ def _country_code_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float
     if len(valid) == 0:
         return 0.001
     iso2 = (valid.str.len() == 2).mean()
-    return float(iso2)
+    return float(np.clip(iso2, 0.001, 0.999))
 
 
 def _birth_year_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float:
@@ -395,7 +395,7 @@ def _birth_year_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float:
         return 0.001
     current_year = datetime.datetime.now().year
     in_range = ((valid >= 1904) & (valid <= current_year)).mean()
-    return float(in_range)
+    return float(np.clip(in_range, 0.001, 0.999))
 
 
 def _referential_integrity_score(agent_df: pd.DataFrame) -> float:
@@ -418,7 +418,7 @@ def _price_negative_score(agent_df: pd.DataFrame) -> float:
     valid = agent_df[col].dropna()
     if len(valid) == 0:
         return 0.999
-    return float((valid >= 0).mean())
+    return float(np.clip((valid >= 0).mean(), 0.001, 0.999))
 
 
 def _category_canonical_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float:
@@ -431,7 +431,7 @@ def _category_canonical_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) ->
     if len(valid) == 0:
         return 0.001
     canonical_set = set(CANONICAL_CATEGORIES)
-    return float(valid.isin(canonical_set).mean())
+    return float(np.clip(valid.isin(canonical_set).mean(), 0.001, 0.999))
 
 
 def _timestamp_format_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> float:
@@ -444,4 +444,4 @@ def _timestamp_format_score(agent_df: pd.DataFrame, truth_df: pd.DataFrame) -> f
         return 0.999
     import re
     iso_utc = valid.str.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
-    return float(iso_utc.mean())
+    return float(np.clip(iso_utc.mean(), 0.001, 0.999))
