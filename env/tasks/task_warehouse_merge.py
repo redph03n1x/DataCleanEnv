@@ -12,7 +12,7 @@ from env.models import (
 
 TASK_CONFIG = TaskConfig(
     task_name=TaskName.WAREHOUSE_MERGE,
-    display_name="The Data Warehouse Merge",
+    display_name="schema-merge",
     difficulty="medium",
     max_steps=30,
     dataset_rows=800,

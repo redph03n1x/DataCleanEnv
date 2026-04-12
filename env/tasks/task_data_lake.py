@@ -12,7 +12,7 @@ from env.models import (
 
 TASK_CONFIG = TaskConfig(
     task_name=TaskName.DATA_LAKE_CRISIS,
-    display_name="The Data Lake Crisis",
+    display_name="pipeline-prep",
     difficulty="hard",
     max_steps=60,
     dataset_rows=1000,      # main customers table; others are smaller

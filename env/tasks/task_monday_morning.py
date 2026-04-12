@@ -13,7 +13,7 @@ from env.models import (
 
 TASK_CONFIG = TaskConfig(
     task_name=TaskName.MONDAY_MORNING,
-    display_name="The Analyst's Monday Morning",
+    display_name="clean-ingest",
     difficulty="easy",
     max_steps=15,
     dataset_rows=500,

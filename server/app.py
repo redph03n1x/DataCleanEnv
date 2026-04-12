@@ -29,8 +29,8 @@ from env.models import (
     StateResponse,
     StepRequest, StepResponse,
     TaskListResponse,
+    TaskName,               # ← ADD THIS LINE
 )
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
@@ -183,6 +183,58 @@ async def state():
     )
 
 
+@app.get("/demo", tags=["meta"])
+async def demo():
+    """
+    Run a complete demonstration episode.
+    Visit this URL to see DataCleanEnv in action without any setup.
+    """
+    from env.models import Action, ActionType
+
+    obs = _env.reset(task=TaskName.MONDAY_MORNING, seed=42)
+
+    demo_actions = [
+        Action(action_type=ActionType.REMOVE_EXACT_DUPLICATES),
+        Action(action_type=ActionType.PARSE_DATES, column="signup_date"),
+        Action(action_type=ActionType.CLIP_OUTLIERS_IQR, column="age"),
+        Action(action_type=ActionType.FILL_NULL_MEDIAN, column="age"),
+        Action(action_type=ActionType.FILL_NULL_MEAN, column="revenue"),
+        Action(action_type=ActionType.NORMALIZE_CATEGORIES, column="email"),
+        Action(action_type=ActionType.SUBMIT),
+    ]
+
+    trajectory = []
+    total_reward = 0.0
+
+    for i, action in enumerate(demo_actions):
+        result = _env.step(action)
+        total_reward += result.reward
+        trajectory.append({
+            "step":        i + 1,
+            "action":      action.to_log_string(),
+            "reward":      round(result.reward, 4),
+            "done":        result.done,
+            "rows":        result.observation.total_rows,
+            "duplicates":  result.observation.duplicate_row_count,
+            "nulls_total": round(sum(
+                c.null_rate for c in result.observation.columns
+            ), 4),
+        })
+        if result.done:
+            break
+
+    return {
+        "environment": "dataclean-env",
+        "task":        "clean-ingest",
+        "seed":        42,
+        "total_steps": len(trajectory),
+        "total_reward": round(total_reward, 4),
+        "final_score": trajectory[-1]["reward"],
+        "trajectory":  trajectory,
+        "try_it":      "POST /reset then POST /step to run your own episode",
+        "docs":        "/docs for full interactive API",
+    }
+
 # ─────────────────────────────────────────────────────────────────
 # GLOBAL ERROR HANDLER
 # ─────────────────────────────────────────────────────────────────
@@ -203,3 +255,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
